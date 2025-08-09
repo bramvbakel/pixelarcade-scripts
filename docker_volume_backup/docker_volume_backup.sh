@@ -67,6 +67,10 @@ if docker run --rm \
 then
   echo "Backup was successful."
   BACKUP_STATUS=0
+  # Try to send Discord notification, but ignore errors
+  if [ -n "$NOTIFY_DISCORD_PATH" ] && [ -x "$NOTIFY_DISCORD_PATH" ]; then
+    "$NOTIFY_DISCORD_PATH" "Backup completed: $BACKUP_DIR/${BACKUP_NAME}-$DATE.tar" || true
+  fi
 else
   echo "Backup failed."
   BACKUP_STATUS=1
