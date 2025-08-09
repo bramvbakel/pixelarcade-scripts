@@ -1,7 +1,8 @@
 
-# Taiko Database Backup Script
 
-This script (`taiko_backup.sh`) automates the process of backing up the Taiko database Docker volume to a specified backup directory. It is designed to be run on a Linux system with Docker installed and access to the target backup location (e.g., a mounted NAS).
+# Docker Volume Backup Script
+
+This script (`docker_volume_backup.sh`) automates the process of backing up any Docker volume to a specified backup directory. It is designed to be run on a Linux system with Docker installed and access to the target backup location (e.g., a mounted NAS or local folder).
 
 ## How It Works
 
@@ -35,12 +36,12 @@ This script (`taiko_backup.sh`) automates the process of backing up the Taiko da
 3. Ensure the backup directory you set in `.env` is accessible and writable.
 4. Run the script with:
 	```bash
-	bash taiko_backup.sh
+	bash docker_volume_backup.sh
 	```
 	or make it executable and run directly:
 	```bash
-	chmod +x taiko_backup.sh
-	./taiko_backup.sh
+	chmod +x docker_volume_backup.sh
+	./docker_volume_backup.sh
 	```
 
 ## Notes
@@ -56,6 +57,7 @@ DOCKER_VOLUME="your-docker-volume-name"
 ```
 
 You can use `.env.example` as a template.
+
 - The script will automatically clean up old backups (older than 14 days).
 
 ## Troubleshooting

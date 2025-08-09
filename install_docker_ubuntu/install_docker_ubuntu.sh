@@ -1,9 +1,22 @@
 #!/bin/bash
 set -e
 
-# Check if script is run as root
+# Load environment variables from .env if it exists
+if [ -f .env ]; then
+  set -a
+  . ./.env
+  set +a
+fi
+
+# Prevent running as root
 if [ "$EUID" -eq 0 ]; then
   echo "Please do not run this script as root. Use a regular user with sudo privileges."
+  exit 1
+fi
+
+# Require TIMEZONE to be set in .env
+if [ -z "$TIMEZONE" ]; then
+  echo "Error: TIMEZONE is not set. Please set it in the .env file."
   exit 1
 fi
 
@@ -33,16 +46,15 @@ else
   ADDED_TO_GROUP=1
 fi
 
-# Set time zone to Europe/Amsterdam
-echo "Setting time zone to Europe/Amsterdam..."
-sudo timedatectl set-timezone Europe/Amsterdam || { echo "Failed to set timezone"; exit 1; }
+# Set time zone from .env
+echo "Setting time zone to $TIMEZONE..."
+sudo timedatectl set-timezone "$TIMEZONE" || { echo "Failed to set timezone"; exit 1; }
 
 # Enable and start Docker service
 echo "Enabling and starting Docker service..."
 sudo systemctl enable docker || { echo "Failed to enable Docker service"; exit 1; }
 sudo systemctl start docker || { echo "Failed to start Docker service"; exit 1; }
 
-# Final message
 echo "\n---"
 echo "Setup complete!"
 if [ "$ADDED_TO_GROUP" = "1" ]; then

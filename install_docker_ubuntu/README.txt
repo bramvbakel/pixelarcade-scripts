@@ -18,26 +18,40 @@ This script (`setup_docker.sh`) automates the setup of an Ubuntu system for Dock
 	- Adds the current user to the `docker` group, allowing Docker commands without `sudo` (requires logout/login to take effect).
 
 5. **Set Time Zone**
-	- Sets the system time zone to `Europe/Amsterdam` using `timedatectl`.
+	- Sets the system time zone to the value specified in the `.env` file (see below for configuration) using `timedatectl`.
 
 6. **Enable and Start Docker Service**
 	- Enables Docker to start on boot and starts the Docker service immediately.
 
 ## Usage
 
-1. Make the script executable:
+1. Create your own `.env` file using the provided template:
 	```bash
-	chmod +x setup_docker.sh
+	cp .env.example .env
+	# Edit .env to set TIMEZONE with your own value
 	```
-2. Run the script:
+2. Make the script executable:
 	```bash
-	./setup_docker.sh
+	chmod +x install_docker_ubuntu.sh
+	```
+3. Run the script:
+	```bash
+	./install_docker_ubuntu.sh
 	```
 
 ## Notes
 - You may need to log out and log back in for the Docker group changes to take effect.
 - The script must be run with a user that has `sudo` privileges.
-- Adjust the time zone in the script if you are not in Europe/Amsterdam.
+- Set the time zone in the `.env` file to your desired value (e.g., Europe/Amsterdam).
+## Environment Variables
+
+Create a `.env` file in the same directory as the script with the following variable:
+
+```
+TIMEZONE="Europe/Amsterdam"
+```
+
+You can use `.env.example` as a template.
 
 ## Troubleshooting
 - If you cannot run Docker without `sudo` after running the script, log out and log back in, or reboot your system.
