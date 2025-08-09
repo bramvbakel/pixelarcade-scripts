@@ -1,21 +1,19 @@
 # Docker Volume Backup Script
 
-This script (`docker_volume_backup.sh`) automates the process of backing up any Docker volume to a specified backup directory. It is designed to be run on a Linux system with Docker installed and access to the target backup location (e.g., a mounted NAS or local folder).
+This script (`docker_volume_backup.sh`) automates the process of backing up a Docker volume to a specified backup directory. It is designed for Linux systems with Docker installed and can be used for local or network storage.
 
 ## How It Works
 
-1. **Set Backup Location**  
-   The script loads the backup directory from the `.env` file (see below for configuration).
-2. **Set Date Format**  
-   The backup filename includes the current date in `DD-MM-YYYY` format for easy identification.
-3. **Ensure Backup Directory Exists**  
-   The script creates the backup directory if it does not already exist.
-4. **Remove Old Backups**  
-   Any backup files older than 14 days in the backup directory are automatically deleted to save space.
-5. **Perform the Backup**  
-   The script uses Docker to run a temporary BusyBox container, which creates a tar archive of the specified Docker volume and saves it to the backup directory with the current date in the filename.
-6. **Check Backup Success**  
-   After the backup command runs, the script checks if it was successful and prints a message indicating success or failure.
+1. **Loads Configuration**  
+   Reads all settings from a `.env` file (see below for configuration).
+2. **Checks Requirements**  
+   Ensures Docker is installed, the backup directory exists (or creates it), and the specified Docker volume exists.
+3. **Creates a Timestamped Backup**  
+   Uses Docker to run a temporary BusyBox container, creating a tar archive of the specified Docker volume. The backup file is named with a prefix and the current date.
+4. **Backup Retention by File Count**  
+   Keeps only the most recent number of backups as set by `BACKUP_KEEP_COUNT` in your `.env` file. Older backups are automatically deleted.
+5. **Reports Success or Failure**  
+   Prints a message indicating whether the backup was successful and the path to the backup file.
 
 ## Usage
 
@@ -23,7 +21,7 @@ This script (`docker_volume_backup.sh`) automates the process of backing up any 
 2. Create your own `.env` file using the provided template:
    ```bash
    cp .env.example .env
-   # Edit .env to set BACKUP_DIR, DOCKER_VOLUME, and BACKUP_NAME with your own values
+   # Edit .env to set BACKUP_DIR, DOCKER_VOLUME, BACKUP_NAME, and BACKUP_KEEP_COUNT with your own values
    ```
 3. Ensure the backup directory you set in `.env` is accessible and writable.
 4. Run the script with:
@@ -44,14 +42,15 @@ Create a `.env` file in the same directory as the script with the following vari
 BACKUP_DIR="/your/backup/location"
 DOCKER_VOLUME="your-docker-volume-name"
 BACKUP_NAME="your-backup-name-prefix"
+BACKUP_KEEP_COUNT=7
 ```
 
 You can use `.env.example` as a template.
 
 ## Notes
 - The script must be run with sufficient permissions to access Docker and the backup directory.
-- Do not edit sensitive or environment-specific values in the script. Use the `.env` file for configuration.
-- The script will automatically clean up old backups (older than 14 days).
+- All configuration is handled via the `.env` file; do not edit sensitive or environment-specific values in the script.
+- The script will automatically keep only the most recent backups as specified by `BACKUP_KEEP_COUNT`.
 
 ## Troubleshooting
 - If you see a "Backup failed." message, check Docker permissions, volume names, and backup directory access.

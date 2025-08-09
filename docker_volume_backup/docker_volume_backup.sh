@@ -1,15 +1,28 @@
 #!/bin/bash
 set -e
 
+# Log file setup
+LOG_FILE="$(dirname "$0")/docker_volume_backup.log"
+LOG_DATE_FORMAT="%d-%m-%Y %H:%M:%S"
+
+# Forces log file to last delete lines if it exists and is too long
+if [ -f "$LOG_FILE" ] && [ $(wc -l < "$LOG_FILE") -gt 1000 ]; then
+  tail -n 1000 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+fi
+
+exec >> "$LOG_FILE" 2>&1
+
+echo "\n--- $(date +"$LOG_DATE_FORMAT") Starting backup run ---"
+
 # Prevent running as root
 if [ "$EUID" -eq 0 ]; then
-  echo "Please do not run this script as root. Use a regular user with sudo privileges if needed."
+  echo "[ERROR] Please do not run this script as root. Use a regular user with sudo privileges if needed."
   exit 1
 fi
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
-  echo "Docker is not installed. Please install Docker first."
+  echo "[ERROR] Docker is not installed. Please install Docker first."
   exit 1
 fi
 
@@ -22,63 +35,77 @@ fi
 
 # Require BACKUP_DIR to be set in .env
 if [ -z "$BACKUP_DIR" ]; then
-  echo "Error: BACKUP_DIR is not set. Please set it in the .env file."
+  echo "[ERROR] BACKUP_DIR is not set. Please set it in the .env file."
   exit 1
 fi
 
 # Require DOCKER_VOLUME to be set in .env
 if [ -z "$DOCKER_VOLUME" ]; then
-  echo "Error: DOCKER_VOLUME is not set. Please set it in the .env file."
+  echo "[ERROR] DOCKER_VOLUME is not set. Please set it in the .env file."
   exit 1
 fi
 
 # Require BACKUP_NAME to be set in .env
 if [ -z "$BACKUP_NAME" ]; then
-  echo "Error: BACKUP_NAME is not set. Please set it in the .env file."
+  echo "[ERROR] BACKUP_NAME is not set. Please set it in the .env file."
   exit 1
+fi
+
+# Set default for BACKUP_KEEP_COUNT if not set
+if [ -z "$BACKUP_KEEP_COUNT" ]; then
+  BACKUP_KEEP_COUNT=7
+fi
+
+# Set default for BACKUP_DATE_FORMAT if not set
+if [ -z "$BACKUP_DATE_FORMAT" ]; then
+  BACKUP_DATE_FORMAT="%d-%m-%Y"
 fi
 
 # Check if backup directory is writable (or create it)
 if [ ! -w "$BACKUP_DIR" ]; then
-  echo "Backup directory $BACKUP_DIR is not writable or does not exist. Attempting to create it..."
-  mkdir -p "$BACKUP_DIR" || { echo "Failed to create backup directory."; exit 1; }
+  echo "[INFO] Backup directory $BACKUP_DIR is not writable or does not exist. Attempting to create it..."
+  mkdir -p "$BACKUP_DIR" || { echo "[ERROR] Failed to create backup directory."; exit 1; }
 fi
 
 # Check if Docker volume exists
 if ! docker volume inspect "$DOCKER_VOLUME" &>/dev/null; then
-  echo "Docker volume '$DOCKER_VOLUME' does not exist."
+  echo "[ERROR] Docker volume '$DOCKER_VOLUME' does not exist."
   exit 1
 fi
 
-# Set date to DD/MM/YYYY
-DATE=$(date +%d-%m-%Y)
+# Set date using configurable format
+DATE=$(date +"$BACKUP_DATE_FORMAT")
 
-# Remove backups older than 14 days
-echo "Removing backups older than 14 days..."
-find "$BACKUP_DIR" -name "${BACKUP_NAME}-*.tar" -type f -mtime +14 -exec rm {} \;
+# Remove old backups, keep only the newest BACKUP_KEEP_COUNT
+BACKUP_PATTERN="$BACKUP_DIR/${BACKUP_NAME}-*.tar"
+BACKUP_FILES=( $(ls -1t $BACKUP_PATTERN 2>/dev/null) )
+if [ ${#BACKUP_FILES[@]} -gt $BACKUP_KEEP_COUNT ]; then
+  echo "[INFO] Keeping only the $BACKUP_KEEP_COUNT most recent backups. Deleting older ones..."
+  for ((i=BACKUP_KEEP_COUNT; i<${#BACKUP_FILES[@]}; i++)); do
+    echo "[INFO] Deleting ${BACKUP_FILES[$i]}"
+    rm -f "${BACKUP_FILES[$i]}"
+  done
+fi
 
 # Perform backup
-echo "Attempting to backup the docker volume..."
+echo "[INFO] Attempting to backup the docker volume..."
 if docker run --rm \
   -v "$DOCKER_VOLUME":/volume \
   -v "$BACKUP_DIR":/backup \
   busybox \
   tar cf "/backup/${BACKUP_NAME}-$DATE.tar" -C /volume .
 then
-  echo "Backup was successful."
+  echo "[SUCCESS] Backup was successful."
   BACKUP_STATUS=0
-  # Try to send Discord notification, but ignore errors
-  if [ -n "$NOTIFY_DISCORD_PATH" ] && [ -x "$NOTIFY_DISCORD_PATH" ]; then
-    "$NOTIFY_DISCORD_PATH" "Backup completed: $BACKUP_DIR/${BACKUP_NAME}-$DATE.tar" || true
-  fi
 else
-  echo "Backup failed."
+  echo "[ERROR] Backup failed."
   BACKUP_STATUS=1
 fi
 
+# Final message
 echo "---"
 if [ $BACKUP_STATUS -eq 0 ]; then
-  echo "Backup completed successfully: $BACKUP_DIR/${BACKUP_NAME}-$DATE.tar"
+  echo "[SUCCESS] Backup completed successfully: $BACKUP_DIR/${BACKUP_NAME}-$DATE.tar"
 else
-  echo "Backup failed. Please check the error messages above."
+  echo "[ERROR] Backup failed. Please check the error messages above."
 fi
