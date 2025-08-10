@@ -12,13 +12,7 @@ fi
 
 exec >> "$LOG_FILE" 2>&1
 
-echo "\n--- $(date +"$LOG_DATE_FORMAT") Starting backup run ---"
-
-# Prevent running as root
-if [ "$EUID" -eq 0 ]; then
-  echo "[ERROR] Please do not run this script as root. Use a regular user with sudo privileges if needed."
-  exit 1
-fi
+echo "\n--- $(date +"$LOG_DATE_FORMAT") Starting backup run..."
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
@@ -103,7 +97,6 @@ else
 fi
 
 # Final message
-echo "---"
 if [ $BACKUP_STATUS -eq 0 ]; then
   echo "[SUCCESS] Backup completed successfully: $BACKUP_DIR/${BACKUP_NAME}-$DATE.tar"
 else
